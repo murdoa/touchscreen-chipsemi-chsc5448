@@ -96,8 +96,8 @@ as evidence that your wiring/DT is correct.
   `x_lo, y_lo, major, y_hi:x_hi, event:id`.
 - Event nibble 0 or 8 means active; 4 means released; ID 15 means unused.
 - Contact count is the low nibble of byte 1. Zero releases all slots.
-- Ignore proximity (`0xfc`), heartbeat (`0xfd`) and gesture (`0xfe`) packets;
-  also ignore `0xff` as invalid.
+- Ignore proximity (`0xfc`), heartbeat (`0xfd`) and gesture (`0xfe`) packets.
+  Do not reject `0xff`: the vendor does not reserve it as an invalid type.
 - Reject invalid IDs, duplicate IDs, unsupported events and oversized counts
   before changing input state. Short I2C transfers are errors through regmap.
 - Standard MT slots, coordinate transforms and pointer emulation.
@@ -118,7 +118,17 @@ IRQ enable/disable balance is restored and the PM error is reported.
 
 1. Verify board rails, GPIO polarity, exclusive reset ownership and bus address.
 2. Load `chsc5448` with the correct DT node and check the kernel log.
-3. Enable dynamic debug for `chsc5448.c` if desired to log firmware/VID/PID.
+3. Enable dynamic debug for `chsc5448.c` if desired to log firmware/VID/PID
+   and all successfully read raw IRQ reports (potentially noisy):
+
+   ```sh
+   echo 'module chsc5448 +p' | sudo tee /sys/kernel/debug/dynamic_debug/control
+   sudo dmesg -w
+   # After capturing idle, touch, drag and release:
+   echo 'module chsc5448 -p' | sudo tee /sys/kernel/debug/dynamic_debug/control
+   ```
+
+   Requires CONFIG_DYNAMIC_DEBUG and mounted debugfs.
 4. Use `evtest` to check corners, drag, ten-finger tracking, lift/re-touch,
    simultaneous releases and suspend/resume.
 5. Check IRQ counts in `/proc/interrupts` and watch for malformed-frame/I2C errors.

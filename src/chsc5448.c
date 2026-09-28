@@ -105,8 +105,10 @@ static irqreturn_t chsc5448_irq(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
-	/* Proximity, heartbeat and gesture packets are not touch frames. */
-	if (report[0] >= 0xfc)
+	dev_dbg(&ts->client->dev, "report: %*ph\n", (int)sizeof(report), report);
+
+	/* Only exclude known special packets; 0xff may be a touch frame. */
+	if (report[0] == 0xfc || report[0] == 0xfd || report[0] == 0xfe)
 		return IRQ_HANDLED;
 	if ((report[1] & 0x0f) > CHSC_MAX_TOUCHES)
 		goto malformed;
@@ -150,7 +152,8 @@ static irqreturn_t chsc5448_irq(int irq, void *data)
 	return IRQ_HANDLED;
 
 malformed:
-	dev_warn_ratelimited(&ts->client->dev, "malformed touch frame\n");
+	dev_warn_ratelimited(&ts->client->dev, "malformed touch frame: %*ph\n",
+			     (int)sizeof(report), report);
 	return IRQ_HANDLED;
 }
 
